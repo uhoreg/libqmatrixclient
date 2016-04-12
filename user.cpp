@@ -118,22 +118,18 @@ QPixmap User::croppedAvatar(int width, int height)
     return scaledAndCroped;
 }
 
-void User::processEvent(Event* event)
+void User::processEvent(RoomMemberEvent* e)
 {
-    if( event->type() == EventType::RoomMember )
+    if( d->name != e->displayName() )
     {
-        RoomMemberEvent* e = static_cast<RoomMemberEvent*>(event);
-        if( d->name != e->displayName() )
-        {
-            const auto oldName = d->name;
-            d->name = e->displayName();
-            emit nameChanged(this, oldName);
-        }
-        if( d->avatarUrl != e->avatarUrl() )
-        {
-            d->avatarUrl = e->avatarUrl();
-            d->avatarValid = false;
-        }
+        const auto oldName = d->name;
+        d->name = e->displayName();
+        emit nameChanged(this, oldName);
+    }
+    if( d->avatarUrl != e->avatarUrl() )
+    {
+        d->avatarUrl = e->avatarUrl();
+        d->avatarValid = false;
     }
 }
 

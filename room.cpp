@@ -571,7 +571,7 @@ void Room::processStateEvents(const Events& events)
             RoomMemberEvent* memberEvent = static_cast<RoomMemberEvent*>(event);
             // Can't use d->member() below because the user may be not a member (yet)
             User* u = d->connection->user(memberEvent->userId());
-            u->processEvent(event);
+            u->processEvent(memberEvent);
             if( memberEvent->membership() == MembershipType::Join )
             {
                 d->addMember(u);
