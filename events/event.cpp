@@ -125,7 +125,7 @@ bool Event::parseJson(const QJsonObject& obj)
         } else {
             correct = false;
             qDebug() << "Event: can't find event_id";
-            qDebug() << formatJson << obj;
+            qDebug() << formatJson << d->originalJson;
         }
         if( obj.contains("origin_server_ts") )
         {
@@ -134,7 +134,7 @@ bool Event::parseJson(const QJsonObject& obj)
         } else {
             correct = false;
             qDebug() << "Event: can't find ts";
-            qDebug() << formatJson << obj;
+            qDebug() << formatJson << d->originalJson;
         }
     }
     d->roomId = obj.value("room_id").toString();
