@@ -49,6 +49,7 @@ class Room::Private
             : q(nullptr), connection(c), id(id_), joinState(JoinState::Join)
             , unreadMessages(false), highlightCount(0), notificationCount(0)
             , roomMessagesJob(nullptr)
+            , noEarlierEvents(false)
         { }
 
         Room* q;
@@ -77,6 +78,7 @@ class Room::Private
         QHash<const User*, QString> lastReadEventIds;
         QString prevBatch;
         RoomMessagesJob* roomMessagesJob;
+        bool noEarlierEvents;
 
         // Convenience methods to work with the membersMap and usersLeft.
         // addMember() and removeMember() emit respective Room:: signals
@@ -110,8 +112,6 @@ Room::Room(Connection* connection, QString id)
     // https://marcmutz.wordpress.com/translated-articles/pimp-my-pimpl-%E2%80%94-reloaded/
     d->q = this;
     qDebug() << "New Room:" << id;
-
-    //connection->getMembers(this); // I don't think we need this anymore in r0.0.1
 }
 
 Room::~Room()
@@ -166,6 +166,11 @@ void Room::setJoinState(JoinState state)
         return;
     d->joinState = state;
     emit joinStateChanged(oldState, state);
+}
+
+bool Room::noEarlierEvents() const
+{
+    return d->noEarlierEvents;
 }
 
 void Room::setLastReadEvent(User* user, Event* event)
@@ -460,6 +465,7 @@ void Room::Private::getPreviousContent()
         connect( roomMessagesJob, &RoomMessagesJob::result, [=]() {
             if( !roomMessagesJob->error() )
             {
+                noEarlierEvents = roomMessagesJob->events().empty();
                 q->addHistoricalMessageEvents(roomMessagesJob->events());
                 prevBatch = roomMessagesJob->end();
             }

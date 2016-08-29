@@ -72,6 +72,8 @@ namespace QMatrixClient
             Q_INVOKABLE void updateData(SyncRoomData& data );
             Q_INVOKABLE void setJoinState( JoinState state );
 
+            Q_INVOKABLE bool noEarlierEvents() const;
+
             QString readMarkerEventId() const;
             /**
              * @brief Mark the event with uptoEventId as read
