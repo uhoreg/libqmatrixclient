@@ -5,6 +5,9 @@ enable_language(CXX)
 
 include(CheckCXXCompilerFlag)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(cmake/FindOlm.cmake)
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
@@ -40,6 +43,8 @@ endif ( CMAKE_VERSION VERSION_LESS "3.1" )
 
 find_package(Qt5 5.2.1 REQUIRED Network Gui)
 get_filename_component(Qt5_Prefix "${Qt5_DIR}/../../../.." ABSOLUTE)
+find_package(Olm REQUIRED)
+get_filename_component(Olm_Prefix "${Olm_INCLUDE_DIRS}/.." ABSOLUTE)
 
 message( STATUS )
 message( STATUS "=============================================================================" )
@@ -49,7 +54,9 @@ if (CMAKE_BUILD_TYPE)
     message( STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 endif(CMAKE_BUILD_TYPE)
 message( STATUS "Using compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}" )
+message( STATUS "Install Prefix: ${CMAKE_INSTALL_PREFIX}" )
 message( STATUS "Using Qt ${Qt5_VERSION} at ${Qt5_Prefix}" )
+message( STATUS "Using libolm at ${Olm_Prefix}" )
 message( STATUS "=============================================================================" )
 message( STATUS )
 
@@ -92,7 +99,8 @@ add_library(qmatrixclient ${libqmatrixclient_SRCS} ${libqmatrixclient_job_SRCS})
 set_property(TARGET qmatrixclient PROPERTY VERSION "0.0.0")
 set_property(TARGET qmatrixclient PROPERTY SOVERSION 0 )
 
-target_link_libraries(qmatrixclient Qt5::Core Qt5::Network Qt5::Gui)
+target_include_directories(qmatrixclient PRIVATE "${Olm_INCLUDE_DIRS}")
+target_link_libraries(qmatrixclient Qt5::Core Qt5::Network Qt5::Gui ${Olm_LIBRARIES})
 
 add_executable(qmc-example ${example_SRCS})
 target_link_libraries(qmc-example Qt5::Core qmatrixclient)
