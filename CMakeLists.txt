@@ -68,6 +68,7 @@ set(libqmatrixclient_SRCS
    room.cpp
    user.cpp
    settings.cpp
+   encryptionmanager.cpp
    events/event.cpp
    events/roommessageevent.cpp
    events/roomnameevent.cpp
