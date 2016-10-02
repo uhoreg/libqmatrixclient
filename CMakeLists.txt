@@ -90,6 +90,7 @@ set(libqmatrixclient_SRCS
    jobs/syncjob.cpp
    jobs/mediathumbnailjob.cpp
    jobs/logoutjob.cpp
+   jobs/uploaddevicekeys.cpp
 )
 
 aux_source_directory(jobs/generated libqmatrixclient_job_SRCS)
