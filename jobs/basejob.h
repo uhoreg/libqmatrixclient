@@ -134,6 +134,11 @@ namespace QMatrixClient
              * Same as result(), this won't be emitted in case of kill().
              */
             void failure(BaseJob*);
+            
+            /**
+             * TODO
+             */
+            void showSslErrors(BaseJob* job);
 
         protected:
             ConnectionData* connection() const;

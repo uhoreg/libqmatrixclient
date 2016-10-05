@@ -62,7 +62,18 @@ class Connection::Private
         SyncJob* syncJob;
 
         SyncJob* startSyncJob(const QString& filter, int timeout);
+        
+        template<class JobT, class ... Params>
+        JobT* makeJob(Params ... args);
 };
+
+template<class JobT, class ... Params>
+JobT * Connection::Private::makeJob(Params ... args)
+{
+    JobT* newJob = new JobT(data, args...);
+    QObject::connect( newJob, &BaseJob::showSslErrors, q, &Connection::sslErrors );
+    return newJob;
+}
 
 Connection::Connection(QUrl server, QObject* parent)
     : QObject(parent)
@@ -108,7 +119,8 @@ void Connection::resolveServer(QString domain)
 
 void Connection::connectToServer(QString user, QString password)
 {
-    PasswordLogin* loginJob = new PasswordLogin(d->data, user, password);
+    //PasswordLogin* loginJob = new PasswordLogin(d->data, user, password);
+    PasswordLogin* loginJob = d->makeJob<PasswordLogin>(user, password);
     connect( loginJob, &PasswordLogin::success, [=] () {
         connectWithToken(loginJob->id(), loginJob->token());
     });

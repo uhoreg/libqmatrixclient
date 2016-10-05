@@ -29,6 +29,7 @@ namespace QMatrixClient
     class Event;
     class ConnectionPrivate;
     class ConnectionData;
+    class BaseJob;
 
     class SyncJob;
     class RoomMessagesJob;
@@ -81,6 +82,7 @@ namespace QMatrixClient
             void loginError(QString error);
             void connectionError(QString error);
             void resolveError(QString error);
+            void sslErrors(BaseJob* job);
             //void jobError(BaseJob* job);
             
         protected:
