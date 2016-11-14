@@ -145,6 +145,10 @@ void BaseJob::start()
 {
     d->sendRequest();
     connect( d->reply.data(), &QNetworkReply::sslErrors, this, &BaseJob::sslErrors );
+    connect( d->reply.data(), &QNetworkReply::readyRead, [=] {
+        qDebug() << this << "has" << d->reply->bytesAvailable() << "bytes ready after"
+                 << float(d->timer.interval() - d->timer.remainingTime()) / 1000 << "seconds";
+    });
     connect( d->reply.data(), &QNetworkReply::finished, this, &BaseJob::gotReply );
     d->timer.start( 120*1000 );
 }
