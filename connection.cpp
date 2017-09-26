@@ -21,6 +21,7 @@
 #include "user.h"
 #include "events/event.h"
 #include "room.h"
+#include "encryptionmanager.h"
 #include "jobs/passwordlogin.h"
 #include "jobs/logoutjob.h"
 #include "jobs/sendeventjob.h"
@@ -48,6 +49,7 @@ class Connection::Private
             : q(nullptr)
             , data(new ConnectionData(serverUrl))
             , syncJob(nullptr)
+            , encryptionManager(nullptr)
         { }
         Q_DISABLE_COPY(Private)
         Private(Private&&) = delete;
@@ -67,6 +69,7 @@ class Connection::Private
         QString userId;
 
         SyncJob* syncJob;
+        EncryptionManager* encryptionManager;
 
         bool cacheState = true;
 };
@@ -125,6 +128,11 @@ void Connection::connectToServer(const QString& user, const QString& password)
     });
     d->username = user; // to be able to reconnect
     d->password = password;
+
+    qDebug() << "User:" << user;
+    d->encryptionManager = new EncryptionManager(user);
+    d->encryptionManager->initialize("asd");
+    qDebug() << d->encryptionManager->publicIdentityKeys();
 }
 
 void Connection::connectWithToken(const QString& userId, const QString& token)
