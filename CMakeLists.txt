@@ -91,6 +91,7 @@ set(libqmatrixclient_SRCS
    jobs/mediathumbnailjob.cpp
    jobs/logoutjob.cpp
    jobs/uploaddevicekeys.cpp
+   events/encryptedevent.cpp
 )
 
 aux_source_directory(jobs/generated libqmatrixclient_job_SRCS)
