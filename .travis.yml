@@ -1,25 +1,25 @@
 language: cpp
 matrix:
   include:
-    - os: linux
-      dist: trusty
-      compiler: gcc
-    - os: linux
-      dist: trusty
-      compiler: clang
-    - os: osx
+  - os: linux
+    dist: trusty
+    compiler: gcc
+  - os: linux
+    dist: trusty
+    compiler: clang
+  - os: osx
 install:
- - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; else sudo apt-get update -qq; fi
- - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install qt5; export PATH="$PATH:/usr/local/opt/qt/bin"; else sudo apt-get install -y qt5-default; fi
- - git clone https://matrix.org/git/olm.git && cd olm && make && sudo make install && cd ..
- - mkdir build && cd build
- - cmake ..
+- if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; else sudo apt-get update -qq; fi
+- if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install qt5; export PATH="$PATH:/usr/local/opt/qt/bin"; else sudo apt-get install -y qt5-default; fi
+- git clone https://matrix.org/git/olm.git && cd olm && make && sudo make install && cd ..
+- mkdir build && cd build
+- cmake ..
 script:
- - cmake --build . --target all
+- cmake --build . --target all
 notifications:
-    webhooks:
-        urls:
-            - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MGtpdHN1bmUlM0FtYXRyaXgub3JnLyUyMVBDelV0eHRPalV5U3hTZWxvZiUzQW1hdHJpeC5vcmc"
-        on_success: change  # always|never|change
-        on_failure: always
-        on_start: never
+  webhooks:
+    urls:
+    - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MGtpdHN1bmUlM0FtYXRyaXgub3JnLyUyMVBDelV0eHRPalV5U3hTZWxvZiUzQW1hdHJpeC5vcmc"
+    on_success: change  # always|never|change
+    on_failure: always
+    on_start: never
