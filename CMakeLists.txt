@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 2.8.11) # Maybe works with even older versions
+cmake_minimum_required(VERSION 3.1)
 
 project(qmatrixclient)
-enable_language(CXX)
 
+include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -25,26 +25,18 @@ endif()
 # Setup command line parameters for the compiler and linker
 CHECK_CXX_COMPILER_FLAG("-Wall" WALL_FLAG_SUPPORTED)
 if ( WALL_FLAG_SUPPORTED AND NOT CMAKE_CXX_FLAGS MATCHES "(^| )-Wall($| )")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+    add_compile_options("-Wall")
 endif ( )
 CHECK_CXX_COMPILER_FLAG("-Wpedantic" PEDANTIC_FLAG_SUPPORTED)
 if ( PEDANTIC_FLAG_SUPPORTED AND NOT CMAKE_CXX_FLAGS MATCHES "(^| )pedantic($| )")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic")
+    add_compile_options("-Wpedantic")
 endif ( )
 
-if ( CMAKE_VERSION VERSION_LESS "3.1" )
-    CHECK_CXX_COMPILER_FLAG("-std=c++11" STD_FLAG_SUPPORTED)
-    if ( STD_FLAG_SUPPORTED )
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    endif ( STD_FLAG_SUPPORTED )
-else ( CMAKE_VERSION VERSION_LESS "3.1" )
-    set(CMAKE_CXX_STANDARD 11)
-endif ( CMAKE_VERSION VERSION_LESS "3.1" )
+set(CMAKE_CXX_STANDARD 11)
 
 find_package(Qt5 5.2.1 REQUIRED Network Gui)
 get_filename_component(Qt5_Prefix "${Qt5_DIR}/../../../.." ABSOLUTE)
 find_package(Olm REQUIRED)
-get_filename_component(Olm_Prefix "${Olm_INCLUDE_DIRS}/.." ABSOLUTE)
 
 message( STATUS )
 message( STATUS "=============================================================================" )
@@ -56,9 +48,51 @@ endif(CMAKE_BUILD_TYPE)
 message( STATUS "Using compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}" )
 message( STATUS "Install Prefix: ${CMAKE_INSTALL_PREFIX}" )
 message( STATUS "Using Qt ${Qt5_VERSION} at ${Qt5_Prefix}" )
-message( STATUS "Using libolm at ${Olm_Prefix}" )
+if (BUILD_OLM)
+    message( STATUS "Using libolm ${Olm_VERSION} sources at ${Olm_Prefix}" )
+else (BUILD_OLM)
+    message( STATUS "Using libolm ${Olm_VERSION} at ${Olm_Prefix}" )
+endif (BUILD_OLM)
 message( STATUS "=============================================================================" )
 message( STATUS )
+
+if (BUILD_OLM)
+    # The whole BUILD_OLM thing is rather a stopgap for now, so no support
+    # for updates to the sources tree
+    aux_source_directory(${Olm_Prefix}/src olm_SRCS)
+    set (olm_SRCS ${olm_SRCS}
+        ${Olm_Prefix}/lib/crypto-algorithms/sha256.c
+        ${Olm_Prefix}/lib/crypto-algorithms/aes.c
+        ${Olm_Prefix}/lib/curve25519-donna/curve25519-donna.c
+    )
+    set(olm_dep_INCLUDE_DIR ${Olm_Prefix}/lib)
+    set(Olm_LIBRARIES olm)
+    add_library(${Olm_LIBRARIES} ${olm_SRCS})
+    target_include_directories(${Olm_LIBRARIES} PUBLIC
+        "${Olm_INCLUDE_DIRS}"
+        "${olm_dep_INCLUDE_DIR}"
+    )
+    target_compile_definitions(${Olm_LIBRARIES} PUBLIC
+        "-DOLMLIB_VERSION_MAJOR=${Olm_VERSION_MAJOR}"
+        "-DOLMLIB_VERSION_MINOR=${Olm_VERSION_MINOR}"
+        "-DOLMLIB_VERSION_PATCH=${Olm_VERSION_PATCH}"
+    )
+    if (PEDANTIC_FLAG_SUPPORTED)
+        target_compile_options(${Olm_LIBRARIES} PRIVATE "-Wno-pedantic")
+    endif (PEDANTIC_FLAG_SUPPORTED)
+
+    CHECK_C_COMPILER_FLAG("-std=c99" C99_FLAG_SUPPORTED)
+    if (C99_FLAG_SUPPORTED)
+        # Can't use target_compile_options here because it also adds the flag
+        # to C++ flags which is improper; and set(CMAKE_C_STANDARD 99) for some
+        # reason just does nothing.
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+        CHECK_CXX_COMPILER_FLAG("-Werror" WERROR_FLAG_SUPPORTED)
+        if (WERROR_FLAG_SUPPORTED)
+            target_compile_options(${Olm_LIBRARIES} PRIVATE "-Werror")
+        endif (WERROR_FLAG_SUPPORTED)
+    endif (C99_FLAG_SUPPORTED)
+endif (BUILD_OLM)
 
 # Set up source files
 set(libqmatrixclient_SRCS
@@ -102,7 +136,7 @@ add_library(qmatrixclient ${libqmatrixclient_SRCS} ${libqmatrixclient_job_SRCS})
 set_property(TARGET qmatrixclient PROPERTY VERSION "0.0.0")
 set_property(TARGET qmatrixclient PROPERTY SOVERSION 0 )
 
-target_include_directories(qmatrixclient PRIVATE "${Olm_INCLUDE_DIRS}")
+target_include_directories(qmatrixclient SYSTEM PRIVATE "${Olm_INCLUDE_DIRS}")
 target_link_libraries(qmatrixclient Qt5::Core Qt5::Network Qt5::Gui ${Olm_LIBRARIES})
 
 add_executable(qmc-example ${example_SRCS})

@@ -16,15 +16,29 @@ find_path(Olm_INCLUDE_DIRS NAMES
     DOC "Path to a directory with libolm header files"
 )
 
-find_library(Olm_LIBRARIES NAMES olm
-    PATHS "${Olm_LIBRARY_DIR}"
-    DOC "Path to a directory with libolm libraries"
-)
-
 include(FindPackageHandleStandardArgs)
-# handle the QUIETLY and REQUIRED arguments and set OLM_FOUND to TRUE
-# if all listed variables are TRUE
-find_package_handle_standard_args(olm DEFAULT_MSG
-                                  Olm_LIBRARIES Olm_INCLUDE_DIRS)
+if (BUILD_OLM)
+    find_package_handle_standard_args(olm DEFAULT_MSG Olm_INCLUDE_DIRS)
+else (BUILD_OLM)
+    find_library(Olm_LIBRARIES NAMES olm
+        PATHS "${Olm_LIBRARY_DIR}"
+        DOC "Path to a directory with libolm libraries"
+    )
 
-mark_as_advanced(Olm_INCLUDE_DIRS Olm_LIBRARIES)
+    # handle the QUIETLY and REQUIRED arguments and set OLM_FOUND to TRUE
+    # if all listed variables are TRUE
+    find_package_handle_standard_args(olm DEFAULT_MSG
+                                      Olm_LIBRARIES Olm_INCLUDE_DIRS)
+    mark_as_advanced(Olm_LIBRARIES)
+endif (BUILD_OLM)
+
+get_filename_component(Olm_Prefix "${Olm_INCLUDE_DIRS}/.." ABSOLUTE)
+
+mark_as_advanced(Olm_Prefix Olm_INCLUDE_DIRS)
+
+file (STRINGS ${Olm_Prefix}/common.mk Olm_Versions)
+foreach (vercomp MAJOR MINOR PATCH)
+    string (REGEX REPLACE ".*${vercomp} := ([0-9]+).*" "\\1"
+        Olm_VERSION_${vercomp} ${Olm_Versions})
+endforeach ()
+set (Olm_VERSION "${Olm_VERSION_MAJOR}.${Olm_VERSION_MINOR}.${Olm_VERSION_PATCH}")
