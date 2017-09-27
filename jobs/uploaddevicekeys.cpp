@@ -19,8 +19,7 @@
 #include "uploaddevicekeys.h"
 
 #include "../encryptionmanager.h"
-
-#include <QtCore/QJsonArray>
+#include "converters.h"
 
 using namespace QMatrixClient;
 
@@ -31,8 +30,8 @@ UploadDeviceKeys::UploadDeviceKeys(ConnectionData* connection,
             , Query()
             , Data(
                 { { "device_id", encryptionManager->deviceId() }
-                , { "algorithms", QJsonArray {
-                    "m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2" } }
+                , { "algorithms", toJson(QStringList {
+                    "m.olm.v1.curve25519-aes-sha2", "m.megolm.v1.aes-sha2" }) }
                 , { "keys", encryptionManager->publicIdentityKeys() }
                 , { "user_id", encryptionManager->userId() }
             })
