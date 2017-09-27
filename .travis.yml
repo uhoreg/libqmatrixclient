@@ -11,9 +11,9 @@ matrix:
 install:
 - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; else sudo apt-get update -qq; fi
 - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install qt5; export PATH="$PATH:/usr/local/opt/qt/bin"; else sudo apt-get install -y qt5-default; fi
-- git clone https://matrix.org/git/olm.git && cd olm && make && sudo make install && cd ..
+- git clone https://matrix.org/git/olm.git && cd olm && make static && cd ..
 - mkdir build && cd build
-- cmake ..
+- cmake -DOlm_INCLUDE_DIR="olm/include" -DOlm_LIBRARY_DIR="olm/build" ..
 script:
 - cmake --build . --target all
 notifications:
