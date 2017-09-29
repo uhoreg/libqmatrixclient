@@ -19,11 +19,9 @@
 
 #include "encryptionmanager.h"
 
-#include <olm/olm.h>
+#include <olm/account.hh>
 
-#include <climits>
 #include <random>
-#include <algorithm>
 #include <functional>
 
 #include <QtCore/QJsonObject>
@@ -33,8 +31,7 @@
 
 using namespace QMatrixClient;
 
-using random_bytes_engine = std::independent_bits_engine<
-    std::default_random_engine, CHAR_BIT, unsigned char>;
+using random_bytes_source = std::random_device;
 
 class EncryptionManager::Private
 {
@@ -47,12 +44,9 @@ class EncryptionManager::Private
         QString deviceId;
         bool valid;
 
-        OlmAccount* account;
+        olm::Account* account;
         QJsonObject publicIdentityKeys;
-
-        random_bytes_engine rbe;
 };
-
 
 EncryptionManager::EncryptionManager(QString userId)
     : d(new Private(std::move(userId)))
@@ -74,36 +68,61 @@ bool EncryptionManager::isValid() const
     return d->valid;
 }
 
+template <typename Cont>
+inline uint8_t* _raw_bytes(Cont& cont)
+{
+    return reinterpret_cast<uint8_t*>(cont.data());
+}
+
+template <typename Cont>
+inline const uint8_t* _raw_bytes_const(const Cont& cont)
+{
+    return reinterpret_cast<const uint8_t*>(cont.data());
+}
+
 bool EncryptionManager::initialize(QString deviceId)
 {
     d->deviceId = deviceId;
 
-    size_t randomSize = olm_create_account_random_length(d->account);
-    std::vector<unsigned char> randomData(randomSize);
-    std::generate(begin(randomData), end(randomData), std::ref(d->rbe));
-    size_t create_error = olm_create_account(d->account, (void*) &randomData[0], randomSize);
-
-    if( create_error == olm_error() )
     {
-        qDebug() << "OLM ERROR: ACCOUNT: creating: " << olm_account_last_error(d->account);
-        return false;
+        using random_bytes_type = random_bytes_source::result_type;
+
+        auto olmRandomSize =
+            d->account->new_account_random_length() * sizeof(uint8_t);
+        auto stdRandomSize = olmRandomSize / sizeof(random_bytes_type);
+        if (olmRandomSize % sizeof(random_bytes_type))
+            ++stdRandomSize;
+
+        std::vector<random_bytes_type> randomData(stdRandomSize);
+        random_bytes_source rbs;
+        std::generate(begin(randomData), end(randomData), std::ref(rbs));
+        d->account->new_account(_raw_bytes_const(randomData), olmRandomSize);
+        // FIXME: randomData should be scrubbed up here.
+        if(d->account->last_error != OLM_SUCCESS )
+        {
+            qDebug() << "OLM ERROR: ACCOUNT: creating: "
+                     << _olm_error_to_string(d->account->last_error);
+            return false;
+        }
+        qDebug() << "OLM: successfully created keys";
     }
 
-    qDebug() << "OLM: successfully created keys";
-
-    size_t publicIdentitySize = olm_account_identity_keys_length(d->account);
-    QByteArray keyData;
-    keyData.resize(publicIdentitySize);
-    size_t readError = olm_account_identity_keys(d->account, (void*) keyData.data(), publicIdentitySize);
-    if( readError == olm_error() )
     {
-        qDebug() << "OLM ERROR: ACCOUNT: reading keys: " << olm_account_last_error(d->account);
-        return false;
+        auto publicIdentitySize = d->account->get_identity_json_length();
+        QByteArray keyData;
+        keyData.resize(/*QByteArray::size_type*/int(publicIdentitySize));
+        d->account->get_identity_json(_raw_bytes(keyData), publicIdentitySize);
+        if (d->account->last_error != OLM_SUCCESS)
+        {
+            qDebug() << "OLM ERROR: ACCOUNT: reading keys: "
+                     << _olm_error_to_string(d->account->last_error);
+            return false;
+        }
+        auto json = QJsonDocument::fromJson(keyData);
+        d->publicIdentityKeys = json.object();
+
+        qDebug() << "OLM: successfully read keys:" << json.toJson();
     }
-
-    d->publicIdentityKeys = QJsonDocument::fromJson(keyData).object();
-
-    qDebug() << "OLM: successfully read keys";
 
     d->valid = true;
     return true;
@@ -122,14 +141,15 @@ QByteArray EncryptionManager::save()
     stream << d->deviceId;
     stream << QJsonDocument(d->publicIdentityKeys).toBinaryData();
 
-    size_t pickleLength = olm_pickle_account_length(d->account);
+    auto pickleLength = olm::pickle_length(*d->account);
     QByteArray pickleData;
-    pickleData.resize(pickleLength);
-    size_t pickleError = olm_pickle_account(d->account, 0, 0, pickleData.data(), pickleLength);
-    if( pickleError == olm_error() )
+    pickleData.resize(/*QByteArray::size_type*/int(pickleLength));
+    olm::pickle(_raw_bytes(pickleData), *d->account);
+    if (d->account->last_error != OLM_SUCCESS )
     {
-        qDebug() << "OLM: ACCOUNT: Error while saving: " << olm_account_last_error(d->account);
-        return QByteArray();
+        qDebug() << "OLM: ACCOUNT: Error while saving: "
+                 << _olm_error_to_string(d->account->last_error);
+        return {};
     }
     stream << pickleData;
     return bytes;
@@ -147,16 +167,19 @@ void EncryptionManager::load(const QByteArray& data)
 
     QByteArray accountPickleData;
     stream >> accountPickleData;
-    size_t pickleError = olm_unpickle_account(d->account, 0, 0, accountPickleData.data(), accountPickleData.size());
-    if( pickleError == olm_error() )
-    {
-        qDebug() << "OLM: ACCOUNT: Error while loading: " << olm_account_last_error(d->account);
-        return;
-    }
-
     if( stream.status() != QDataStream::Ok )
     {
-        qDebug() << "OLM: Error while reading saved data: steam error";
+        qDebug() << "OLM: Error while reading saved data: stream error";
+        return;
+    }
+    olm::unpickle(
+        _raw_bytes_const(accountPickleData),
+        _raw_bytes_const(accountPickleData) + accountPickleData.size(),
+        *d->account);
+    if( d->account->last_error != OLM_SUCCESS )
+    {
+        qDebug() << "OLM: ACCOUNT: Error while loading: "
+                 << _olm_error_to_string(d->account->last_error);
         return;
     }
 
